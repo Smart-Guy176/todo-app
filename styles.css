@@ -5,6 +5,7 @@ body {
     margin: 0;
     padding: 32px;
     min-height: 100vh;
+    box-sizing: border-box;
 }
 
 .container {
@@ -57,6 +58,7 @@ header p {
     font-size: 1.1rem;
     background: #fff;
     transition: border 0.2s;
+    box-sizing: border-box;
 }
 #task-input:focus {
     border-color: #0d87ff;
@@ -109,40 +111,50 @@ ul {
 li {
     display: flex;
     align-items: center;
-    padding: 16px 0;
+    padding: 16px 4px;
     border-bottom: 1.5px solid #f0f2f5;
     gap: 16px;
-    transition: background 0.15s;
+    transition: background-color 0.15s;
     position: relative;
 }
 li:last-child {
     border-bottom: none;
 }
 li:hover {
-    background: #f5f8ff;
+    background-color: #f5f8ff;
 }
 
 li.completed .task-name {
     text-decoration: line-through;
-    color: #b6b9c6;
+    color: #90949c;
+}
+li.completed .task-details {
     opacity: 0.7;
 }
 
-.task-name {
+.task-details {
     flex-grow: 1;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.task-name {
     font-size: 1.08rem;
     font-weight: 500;
     letter-spacing: 0.1px;
     transition: color 0.2s;
+    word-break: break-word;
 }
 
 .due-date {
     font-size: 0.9em;
-    color: #90949c;
+    color: #606770;
     background: #e0e7ff;
     border-radius: 6px;
     padding: 2px 8px;
     margin-left: 8px;
+    white-space: nowrap;
 }
 
 .checkbox {
@@ -153,42 +165,51 @@ li.completed .task-name {
     cursor: pointer;
     flex-shrink: 0;
     background: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     transition: border 0.2s, background 0.2s;
-    position: relative;
-}
-.checkbox:after {
-    content: '';
-    display: block;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: transparent;
-    transition: background 0.2s;
 }
 li.completed .checkbox {
     background: linear-gradient(135deg, #34c759 60%, #0dffb2 100%);
     border-color: #34c759;
 }
-li.completed .checkbox:after {
-    background: #fff;
+
+.delete-btn {
+    background: transparent;
+    border: none;
+    color: #d9dadf;
+    font-size: 1.8rem;
+    font-weight: bold;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+    padding: 0 12px;
+    margin-left: auto;
+}
+li:hover .delete-btn {
+    opacity: 1;
+    color: #c8cdd4;
+}
+.delete-btn:hover {
+    color: #ff3b30; /* Red on hover for delete action */
 }
 
 @media (max-width: 700px) {
+    body {
+        padding: 16px;
+    }
     .container {
         padding: 16px 4vw;
-        max-width: 98vw;
+        margin: 0 auto;
     }
     header h1 {
         font-size: 2rem;
     }
-    .add-task-form {
-        padding: 12px 4px;
-    }
     li {
         padding: 12px 0;
         gap: 10px;
+    }
+    .delete-btn {
+        opacity: 1; /* Always visible on mobile */
+        color: #c8cdd4;
     }
 }
