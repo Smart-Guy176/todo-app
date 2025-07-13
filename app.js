@@ -12,34 +12,51 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('resolveTasks', JSON.stringify(tasks));
     };
 
+    const deleteTask = (taskId) => {
+        tasks = tasks.filter(task => task.id !== taskId);
+        saveTasks();
+        renderTasks();
+    };
+
+    const toggleTaskCompletion = (taskId) => {
+        const task = tasks.find(t => t.id === taskId);
+        if (task) {
+            task.isCompleted = !task.isCompleted;
+            saveTasks();
+            renderTasks();
+        }
+    };
+
     const renderTasks = () => {
         dailyHabitsList.innerHTML = '';
         oneTimeTasksList.innerHTML = '';
 
-        tasks.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+        // Sort tasks to show older, uncompleted tasks first
+        tasks.sort((a, b) => a.isCompleted - b.isCompleted || new Date(a.dueDate) - new Date(b.dueDate));
 
-        tasks.forEach((task, index) => {
+        const todayString = new Date().toDateString();
+
+        tasks.forEach(task => {
             const li = document.createElement('li');
             li.className = task.isCompleted ? 'completed' : '';
-            
+            li.dataset.taskId = task.id;
+
             const checkbox = document.createElement('div');
             checkbox.className = 'checkbox';
-            checkbox.addEventListener('click', () => {
-                tasks[index].isCompleted = !tasks[index].isCompleted;
-                saveTasks();
-                renderTasks();
-            });
+            checkbox.addEventListener('click', () => toggleTaskCompletion(task.id));
 
             const taskDetails = document.createElement('div');
-            taskDetails.className = 'task-name';
-            
+            taskDetails.className = 'task-details';
+
             const taskName = document.createElement('span');
+            taskName.className = 'task-name';
             taskName.textContent = task.name;
             taskDetails.appendChild(taskName);
 
-            const today = new Date().setHours(0,0,0,0);
-            const taskDueDate = new Date(task.dueDate).setHours(0,0,0,0);
+            const today = new Date().setHours(0, 0, 0, 0);
+            const taskDueDate = new Date(task.dueDate).setHours(0, 0, 0, 0);
 
+            // Show due date if it's not for today
             if (taskDueDate < today) {
                 const dueDateSpan = document.createElement('span');
                 dueDateSpan.className = 'due-date';
@@ -47,13 +64,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 taskDetails.appendChild(dueDateSpan);
             }
 
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '×'; // Multiplication sign as 'x'
+            deleteBtn.setAttribute('aria-label', 'Delete task');
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent checkbox click
+                deleteTask(task.id);
+            });
+
             li.appendChild(checkbox);
             li.appendChild(taskDetails);
+            li.appendChild(deleteBtn);
 
-            if (task.isDailyHabit) {
-                if(!task.isCompleted) dailyHabitsList.appendChild(li);
+            const isTaskForToday = new Date(task.dueDate).toDateString() === todayString;
+
+            // Route tasks to the correct list
+            if (task.isDailyHabit && isTaskForToday) {
+                dailyHabitsList.appendChild(li);
             } else {
-                if(!task.isCompleted) oneTimeTasksList.appendChild(li);
+                oneTimeTasksList.appendChild(li);
             }
         });
     };
@@ -63,12 +93,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const lastStackedDate = localStorage.getItem('lastStackedDate');
 
         if (lastStackedDate !== todayStr) {
-            const uniqueHabits = [...new Set(tasks.filter(t => t.isDailyHabit).map(t => t.name))];
-            
-            uniqueHabits.forEach(habitName => {
-                const hasTaskForToday = tasks.some(t => t.name === habitName && new Date(t.dueDate).toDateString() === todayStr);
+            // Find all unique habit names from the entire task history
+            const uniqueHabitNames = [...new Set(tasks.filter(t => t.isDailyHabit).map(t => t.name))];
+
+            uniqueHabitNames.forEach(habitName => {
+                // Check if a task for this habit already exists for today
+                const hasTaskForToday = tasks.some(t =>
+                    t.name === habitName &&
+                    t.isDailyHabit &&
+                    new Date(t.dueDate).toDateString() === todayStr
+                );
+
                 if (!hasTaskForToday) {
                     tasks.push({
+                        id: self.crypto.randomUUID(), // Use unique ID
                         name: habitName,
                         isDailyHabit: true,
                         isCompleted: false,
@@ -81,13 +119,14 @@ document.addEventListener('DOMContentLoaded', () => {
             saveTasks();
         }
     };
-    
+
     // --- Event Listeners ---
-    addTaskBtn.addEventListener('click', () => {
+    const addTask = () => {
         const taskName = taskInput.value.trim();
         if (taskName === '') return;
 
         tasks.push({
+            id: self.crypto.randomUUID(), // Generate a unique ID for each new task
             name: taskName,
             isDailyHabit: isDailyHabitCheckbox.checked,
             isCompleted: false,
@@ -99,6 +138,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         saveTasks();
         renderTasks();
+    };
+
+    addTaskBtn.addEventListener('click', addTask);
+    taskInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            addTask();
+        }
     });
 
     // --- PWA & Notification Logic ---
@@ -112,19 +158,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const registration = await navigator.serviceWorker.register('sw.js');
             console.log('Service Worker registered successfully.');
 
-            // Wait for the user to grant permission
             const permission = await Notification.requestPermission();
             if (permission !== 'granted') {
                 console.log('Notification permission was not granted.');
                 return;
             }
 
-            // Check for Periodic Background Sync support
             if ('periodicSync' in registration) {
                 const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
                 if (status.state === 'granted') {
                     await registration.periodicSync.register('task-reminder', {
-                        minInterval: 8 * 60 * 60 * 1000, // 8 hours in milliseconds
+                        minInterval: 12 * 60 * 60 * 1000, // 12 hours
                     });
                     console.log('Periodic Sync registered for task reminders.');
                 }
